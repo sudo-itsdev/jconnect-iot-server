@@ -12,9 +12,12 @@ const serverUrl = config[environment];
 
 // Add the token to the connection URL
 const token = 'your-secret-token'; // Replace with the actual token
-const ws = new WebSocket(`${serverUrl}?token=${token}`);
 
-const clientId = `client-${Math.random().toString(36).substring(2, 15)}`; // Generate a unique client ID
+// Add the client id to the connection URL
+const client_id = process.env.CLIENT_ID || `ITS_CLOCK_0123456789`; // Generate a unique client ID
+
+const ws = new WebSocket(`${serverUrl}?token=${token}&client_id=${client_id}`)
+
 let timer = 0; // Timer starts at 0 seconds
 let intervalId; // Store the interval ID
 
@@ -23,7 +26,7 @@ ws.on('open', () => {
 
   // Start a timer that sends the incremented time every second
   intervalId = setInterval(() => {
-    const message = JSON.stringify({ id: clientId, seconds: timer });
+    const message = JSON.stringify({ seconds: timer });
     ws.send(message);
     console.log(`Sent message: ${message}`);
     timer++; // Increment the timer

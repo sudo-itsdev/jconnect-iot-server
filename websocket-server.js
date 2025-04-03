@@ -1,16 +1,16 @@
-const WebSocket = require('ws');
-const { setClientStatus, resetClientStatus } = require('./rest-api');
+const WebSocket = require("ws");
+const { setClientStatus, resetClientStatus } = require("./rest-api");
 
 // Replace this with your actual authentication logic
 function isValidToken(token) {
-  const validTokens = ['your-secret-token']; // List of valid tokens
+  const validTokens = ["your-secret-token"]; // List of valid tokens
   return validTokens.includes(token);
 }
 
-function setupWebSocketServer(server, clients) {
+function setupWebSocketServer(server, clients, validClientIds) {
   const wss = new WebSocket.Server({ server });
 
-  wss.on('connection', (ws, req) => {
+  wss.on("connection", (ws, req) => {
     const messageLimit = 70; // Max 70 messages per minute
     let messageCount = 0;
     let rateLimited = false; // Track if the client is rate-limited
@@ -21,61 +21,84 @@ function setupWebSocketServer(server, clients) {
     }, 60 * 1000); // 1 minute
 
     // Parse the token from the query string
-    const urlParams = new URLSearchParams(req.url.split('?')[1]);
-    const token = urlParams.get('token');
+    const urlParams = new URLSearchParams(req.url.split("?")[1]);
+    const token = urlParams.get("token");
+    const clientId = urlParams.get("client_id");
     console.log(`Received token: ${token}`); // Log the received token
+    console.log(`Received client_id: ${clientId}`); // Log the received client_id
 
-    // Validate the token
-    if (!isValidToken(token)) {
-      console.log('Invalid token, closing connection');
-      ws.close(1008, 'Invalid authentication token'); // Close with policy violation code
+    // Check if the client_id is valid
+    if (!clientId || !validClientIds.has(clientId)) {
+      console.log("Invalid client_id, closing connection");
+      ws.close(1008, "Invalid client_id"); // Close with policy violation code
       return;
     }
 
-    console.log('WebSocket client connected with valid token');
+    // Check if client of the same ID is already connected
+    if (clients.has(clientId)) {
+      console.log(
+        `Client with ID ${clientId} is already connected. Closing new connection.`
+      );
+      ws.close(1008, "Client already connected"); // Close with policy violation code
+      return;
+    }
 
-    ws.on('message', (message) => {
+    // Validate the token
+    if (!isValidToken(token)) {
+      console.log("Invalid token, closing connection");
+      ws.close(1008, "Invalid authentication token"); // Close with policy violation code
+      return;
+    }
+
+    console.log("WebSocket client connected with valid token");
+
+    ws.on("message", (message) => {
       try {
         // Increment the message count
         messageCount++;
 
         // Check if the client has exceeded the message limit
         if (messageCount > messageLimit) {
-          console.log('Rate limit exceeded, closing connection');
+          console.log("Rate limit exceeded, closing connection");
           rateLimited = true; // Mark the client as rate-limited
-          ws.close(1008, 'Rate limit exceeded'); // Close with policy violation code
+          ws.close(1008, "Rate limit exceeded"); // Close with policy violation code
           return;
         }
 
         const data = JSON.parse(message);
 
-        // Validate the `id` field
-        if (!data.id || typeof data.id !== 'string') {
-          throw new Error('Invalid ID');
-        }
+        // // Validate the `id` field
+        // if (!data.id || typeof data.id !== "string") {
+        //   throw new Error("Invalid ID");
+        // }
 
         // Validate the `seconds` field (optional but must be a number if present)
-        if (data.seconds !== undefined && typeof data.seconds !== 'number') {
-          throw new Error('Invalid seconds');
+        if (data.seconds !== undefined && typeof data.seconds !== "number") {
+          throw new Error("Invalid seconds");
         }
 
-        console.log('Valid message received:', data);
+        console.log(`Received message from client ${clientId}:`, data);
 
-        // Update the client's data in the `clients` map
-        if (!clients.has(data.id)) {
-          clients.set(data.id, { ws, seconds: 0, lastMessageTime: Date.now(), connected: true });
+        // Update the client's data in the `clients` map using clientId as the key
+        if (!clients.has(clientId)) {
+          clients.set(clientId, {
+            ws,
+            seconds: 0,
+            lastMessageTime: Date.now(),
+            connected: true,
+          });
         }
-        const clientData = clients.get(data.id);
+        const clientData = clients.get(clientId);
         clientData.seconds = data.seconds;
         clientData.lastMessageTime = Date.now(); // Update the time of the most recent message
         clientData.connected = true; // Mark the client as connected
       } catch (error) {
-        console.error('Invalid message format:', error.message);
-        ws.close(1008, 'Invalid message format');
+        console.error("Invalid message format:", error.message);
+        ws.close(1008, "Invalid message format");
       }
     });
 
-    ws.on('close', () => {
+    ws.on("close", () => {
       clearInterval(resetInterval);
 
       // Handle rate-limited clients
@@ -95,7 +118,9 @@ function setupWebSocketServer(server, clients) {
         if (clientData.ws === ws) {
           clientData.connected = false; // Mark the client as disconnected
           clientData.ws = null; // Remove the WebSocket reference
-          console.log(`Client with ID ${id} disconnected but retained in the clients map`);
+          console.log(
+            `Client with ID ${id} disconnected but retained in the clients map`
+          );
           break;
         }
       }
