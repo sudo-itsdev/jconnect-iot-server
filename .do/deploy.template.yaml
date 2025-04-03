@@ -1,8 +1,8 @@
 spec:
-  name: sample-nodejs
+  name: jconnect-iot-server
   services:
   - environment_slug: node-js
     git:
       branch: main
-      repo_clone_url: https://github.com/digitalocean/sample-nodejs.git
-    name: sample-nodejs
+      repo_clone_url: https://github.com/sudo-itsdev/jconnect-iot-server
+    name: sample-server
