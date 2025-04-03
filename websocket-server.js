@@ -11,9 +11,14 @@ function setupWebSocketServer(server, clients) {
   const wss = new WebSocket.Server({ server });
 
   wss.on('connection', (ws, req) => {
+    const messageLimit = 70; // Max 70 messages per minute
     let messageCount = 0;
-    const messageLimit = 50; // Max 50 messages per minute
-    const resetInterval = setInterval(() => (messageCount = 0), 60 * 1000); // Reset every minute
+    let rateLimited = false; // Track if the client is rate-limited
+
+    // Reset the message count every minute
+    const resetInterval = setInterval(() => {
+      messageCount = 0;
+    }, 60 * 1000); // 1 minute
 
     // Parse the token from the query string
     const urlParams = new URLSearchParams(req.url.split('?')[1]);
@@ -31,6 +36,17 @@ function setupWebSocketServer(server, clients) {
 
     ws.on('message', (message) => {
       try {
+        // Increment the message count
+        messageCount++;
+
+        // Check if the client has exceeded the message limit
+        if (messageCount > messageLimit) {
+          console.log('Rate limit exceeded, closing connection');
+          rateLimited = true; // Mark the client as rate-limited
+          ws.close(1008, 'Rate limit exceeded'); // Close with policy violation code
+          return;
+        }
+
         const data = JSON.parse(message);
 
         // Validate the `id` field
@@ -45,13 +61,14 @@ function setupWebSocketServer(server, clients) {
 
         console.log('Valid message received:', data);
 
-        // Process the message (e.g., update the clients map)
+        // Update the client's data in the `clients` map
         if (!clients.has(data.id)) {
-          clients.set(data.id, { ws, seconds: 0 });
+          clients.set(data.id, { ws, seconds: 0, lastMessageTime: Date.now(), connected: true });
         }
-        if (data.seconds !== undefined) {
-          clients.get(data.id).seconds = data.seconds;
-        }
+        const clientData = clients.get(data.id);
+        clientData.seconds = data.seconds;
+        clientData.lastMessageTime = Date.now(); // Update the time of the most recent message
+        clientData.connected = true; // Mark the client as connected
       } catch (error) {
         console.error('Invalid message format:', error.message);
         ws.close(1008, 'Invalid message format');
@@ -60,15 +77,28 @@ function setupWebSocketServer(server, clients) {
 
     ws.on('close', () => {
       clearInterval(resetInterval);
-      // Remove the client from the map when disconnected
+
+      // Handle rate-limited clients
+      if (rateLimited) {
+        for (const [id, clientData] of clients.entries()) {
+          if (clientData.ws === ws) {
+            clients.delete(id); // Remove the client from the map
+            console.log(`Client with ID ${id} removed due to rate limiting`);
+            break;
+          }
+        }
+        return; // Exit early for rate-limited clients
+      }
+
+      // Mark the client as disconnected instead of removing them
       for (const [id, clientData] of clients.entries()) {
         if (clientData.ws === ws) {
-          clients.delete(id);
-          console.log(`Client with ID ${id} disconnected`);
+          clientData.connected = false; // Mark the client as disconnected
+          clientData.ws = null; // Remove the WebSocket reference
+          console.log(`Client with ID ${id} disconnected but retained in the clients map`);
           break;
         }
       }
-      resetClientStatus(); // Reset status when a client disconnects
     });
   });
 }

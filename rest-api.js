@@ -10,12 +10,17 @@ function setupRestApi(app, clients) {
     }
   });
 
-  // REST API to get all connected clients with their seconds
+  // REST API to get all connected clients with their seconds and online status
   app.get('/clients', (req, res) => {
-    const clientData = Array.from(clients.entries()).map(([id, data]) => ({
-      id,
-      seconds: data.seconds, // Include the seconds value for each client
-    }));
+    const clientData = Array.from(clients.entries()).map(([id, data]) => {
+      const currentTime = Date.now();
+      const isOnline = currentTime - data.lastMessageTime <= 5000; // Check if the last message was within 5 seconds
+      return {
+        id,
+        seconds: data.seconds,
+        online: isOnline,
+      };
+    });
     res.json({ clients: clientData });
   });
 }
