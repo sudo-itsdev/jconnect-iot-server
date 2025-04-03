@@ -10,10 +10,13 @@ function setupRestApi(app, clients) {
     }
   });
 
-  // REST API to get all connected clients
+  // REST API to get all connected clients with their seconds
   app.get('/clients', (req, res) => {
-    const clientIds = Array.from(clients.keys());
-    res.json({ clients: clientIds });
+    const clientData = Array.from(clients.entries()).map(([id, data]) => ({
+      id,
+      seconds: data.seconds, // Include the seconds value for each client
+    }));
+    res.json({ clients: clientData });
   });
 }
 
