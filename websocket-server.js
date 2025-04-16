@@ -15,6 +15,8 @@ function setupWebSocketServer(server, clients, validClientIds) {
     let messageCount = 0;
     let rateLimited = false; // Track if the client is rate-limited
 
+    console.log('Client connected...');
+
     // Reset the message count every minute
     const resetInterval = setInterval(() => {
       messageCount = 0;
@@ -28,19 +30,32 @@ function setupWebSocketServer(server, clients, validClientIds) {
     console.log(`Received client_id: ${clientId}`); // Log the received client_id
 
     // Check if the client_id is valid
-    if (!clientId || !validClientIds.has(clientId)) {
-      console.log("Invalid client_id, closing connection");
-      ws.close(1008, "Invalid client_id"); // Close with policy violation code
-      return;
-    }
+    // if (!clientId || !validClientIds.has(clientId)) {
+    //   console.log("Invalid client_id, closing connection");
+    //   ws.close(1008, "Invalid client_id"); // Close with policy violation code
+    //   return;
+    // }
 
-    // Check if client of the same ID is already connected
+    // Check if the client ID is already in the map
     if (clients.has(clientId)) {
-      console.log(
-        `Client with ID ${clientId} is already connected. Closing new connection.`
-      );
-      ws.close(1008, "Client already connected"); // Close with policy violation code
-      return;
+      const existingClient = clients.get(clientId);
+
+      // Check if the existing client is still connected
+      if (
+        existingClient.connected &&
+        existingClient.ws &&
+        existingClient.ws.readyState === WebSocket.OPEN
+      ) {
+        console.log(
+          `Client with ID ${clientId} is already connected. Closing new connection.`
+        );
+        ws.close(1008, "Client with this ID is already connected");
+        return;
+      } else {
+        // Remove the stale client from the map
+        console.log(`Removing stale client with ID ${clientId}`);
+        clients.delete(clientId);
+      }
     }
 
     // Validate the token

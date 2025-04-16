@@ -30,7 +30,7 @@ ws.on('open', () => {
     ws.send(message);
     console.log(`Sent message: ${message}`);
     timer++; // Increment the timer
-  }, 100); // Send every 1 second
+  }, 1000); // Send every 1 second
 });
 
 ws.on('message', (message) => {
