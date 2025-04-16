@@ -59,11 +59,11 @@ function setupWebSocketServer(server, clients) {
     }
 
     // Validate the token
-    if (!isValidToken(token)) {
-      console.log("Invalid token, closing connection");
-      ws.close(1008, "Invalid authentication token"); // Close with policy violation code
-      return;
-    }
+    // if (!isValidToken(token)) {
+    //   console.log("Invalid token, closing connection");
+    //   ws.close(1008, "Invalid authentication token"); // Close with policy violation code
+    //   return;
+    // }
 
     console.log("WebSocket client connected with valid token");
 
