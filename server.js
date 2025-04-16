@@ -5,24 +5,24 @@ const jwt = require("jsonwebtoken");
 const { setupWebSocketServer } = require("./websocket-server");
 const { setupRestApi } = require("./rest-api");
 const { body, validationResult } = require("express-validator");
-const admin = require("firebase-admin"); // Firebase Admin SDK
+// const admin = require("firebase-admin"); // Firebase Admin SDK
 
 const app = express();
 const port = process.env.PORT || 3001;
 
 // Load Firebase Admin SDK
-const serviceAccount = require("./its-jconnect-firebase-adminsdk-fbsvc-7a1e7a4914.json");
+// const serviceAccount = require("./its-jconnect-firebase-adminsdk-fbsvc-7a1e7a4914.json");
 
 // Reference to the Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
 
 // Reference to the Firestore database
-const db = admin.firestore();
+// const db = admin.firestore();
 
 // Collection name to fetch valid client IDs
-const validClientIdsCollection = "manufacturer"; // Change this to your actual collection name
+// const validClientIdsCollection = "manufacturer"; // Change this to your actual collection name
 
 // Declare validClientIds in the global scope
 let validClientIds = new Set();
@@ -30,47 +30,47 @@ let validClientIds = new Set();
 async function fetchValidClientIds() {
   try {
     // Fetch the 'jclock' document from the 'manufacturer' collection
-    const doc = await db.collection("manufacturer").doc("jclock").get();
-    if (!doc.exists) {
-      console.log(
-        'Document "jclock" does not exist in the "manufacturer" collection.'
-      );
-      return;
-    }
+    // const doc = await db.collection("manufacturer").doc("jclock").get();
+    // if (!doc.exists) {
+    //   console.log(
+    //     'Document "jclock" does not exist in the "manufacturer" collection.'
+    //   );
+    //   return;
+    // }
 
     // Get the 'devices' array from the document
-    const data = doc.data();
-    if (Array.isArray(data.devices)) {
-      // Clear the previous valid client IDs
-      validClientIds.clear();
+    // const data = doc.data();
+    // if (Array.isArray(data.devices)) {
+    //   // Clear the previous valid client IDs
+    //   validClientIds.clear();
 
-      // Add each device_id to the Set
-      data.devices.forEach((device) => {
-        if (device.device_id) {
-          validClientIds.add(device.device_id);
-        }
-      });
+    //   // Add each device_id to the Set
+    //   data.devices.forEach((device) => {
+    //     if (device.device_id) {
+    //       validClientIds.add(device.device_id);
+    //     }
+    //   });
 
-      console.log(
-        "Fetched valid client IDs (device_id):",
-        Array.from(validClientIds)
-      );
-    } else {
-      console.log('No "devices" array found in the "jclock" document.');
-    }
+    //   console.log(
+    //     "Fetched valid client IDs (device_id):",
+    //     Array.from(validClientIds)
+    //   );
+    // } else {
+    //   console.log('No "devices" array found in the "jclock" document.');
+    // }
   } catch (error) {
     console.error("Error fetching valid client IDs from Firestore:", error);
   }
 }
 
 // Fetch valid client IDs on startup
-fetchValidClientIds();
+// fetchValidClientIds();
 
 // Set an interval to periodically refresh valid client IDs every 5 minutes
-setInterval(fetchValidClientIds, 1000 * 60 * 5); // Refresh every 5 minutes
+// setInterval(fetchValidClientIds, 1000 * 60 * 5); // Refresh every 5 minutes
 
 // Console log the valid client IDs
-console.log("Initial valid client IDs:", Array.from(validClientIds));
+// console.log("Initial valid client IDs:", Array.from(validClientIds));
 
 // // Apply rate limiting to all REST API routes
 // const apiLimiter = rateLimit({
@@ -106,7 +106,7 @@ const clients = new Map();
 setupRestApi(app, clients);
 
 // Setup WebSocket server
-setupWebSocketServer(server, clients, validClientIds); // Pass valid client IDs to WebSocket server
+setupWebSocketServer(server, clients); // Pass valid client IDs to WebSocket server
 
 // Endpoint to validate data
 app.post(

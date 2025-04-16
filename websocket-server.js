@@ -7,7 +7,7 @@ function isValidToken(token) {
   return validTokens.includes(token);
 }
 
-function setupWebSocketServer(server, clients, validClientIds) {
+function setupWebSocketServer(server, clients) {
   const wss = new WebSocket.Server({ server });
 
   wss.on("connection", (ws, req) => {
