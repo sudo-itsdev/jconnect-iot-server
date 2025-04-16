@@ -116,6 +116,8 @@ function setupWebSocketServer(server, clients) {
     ws.on("close", () => {
       clearInterval(resetInterval);
 
+      console.log("Client disconnected...");
+
       // Handle rate-limited clients
       if (rateLimited) {
         for (const [id, clientData] of clients.entries()) {
